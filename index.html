@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>XREZZKY TOP UP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0B0F1A;
+    --bg-panel:#121828;
+    --bg-panel-2:#1A2236;
+    --line: rgba(255,255,255,0.08);
+    --amber:#FFB020;
+    --amber-dim: #7A5A18;
+    --text:#EDEFF5;
+    --text-dim:#8B92A8;
+    --green:#3DD68C;
+    --red:#FF6B6B;
+    --blue:#5B8CFF;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  #app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative;padding-bottom:74px;}
+
+  /* ===== Header / meteran saldo ===== */
+  .topbar{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,var(--bg) 60%, transparent);padding:16px 16px 8px;}
+  .brand-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .brand{display:flex;align-items:center;gap:8px;}
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px var(--amber);}
+  .brand-name{font-family:'Space Grotesk';font-weight:700;font-size:15px;letter-spacing:0.5px;}
+  .icon-btn{background:var(--bg-panel);border:1px solid var(--line);color:var(--text);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;}
+
+  .meter{background:var(--bg-panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative;}
+  .meter::before{content:'';position:absolute;inset:0;background:radial-gradient(120px 60px at 90% 0%, rgba(255,176,32,0.12), transparent);}
+  .meter-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+  .meter-value{font-family:'IBM Plex Mono';font-weight:600;font-size:22px;color:var(--amber);letter-spacing:1px;}
+  .btn-topup{background:var(--amber);color:#1a1200;border:none;padding:10px 16px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;}
+
+  /* ===== Search & category chips ===== */
+  .search-wrap{padding:12px 16px 4px;}
+  .search-input{width:100%;background:var(--bg-panel);border:1px solid var(--line);color:var(--text);padding:11px 14px;border-radius:12px;font-size:14px;}
+  .search-input::placeholder{color:var(--text-dim);}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:12px 16px;scrollbar-width:none;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{flex:0 0 auto;background:var(--bg-panel);border:1px solid var(--line);color:var(--text-dim);padding:7px 14px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .chip.active{background:var(--amber);color:#1a1200;border-color:var(--amber);}
+
+  /* ===== Product grid ===== */
+  .content{flex:1;padding:4px 16px 16px;}
+  .product-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .product-card{background:var(--bg-panel);border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;transition:border-color .15s;}
+  .product-card:active{border-color:var(--amber-dim);}
+  .product-brand{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+  .product-name{font-size:13px;font-weight:600;line-height:1.35;margin-bottom:10px;min-height:35px;}
+  .product-price{font-family:'IBM Plex Mono';font-size:13.5px;font-weight:600;color:var(--amber);}
+  .product-status{font-size:10px;color:var(--red);margin-top:4px;}
+  .section-title{font-size:13px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px;}
+
+  /* ===== List items (riwayat, deposit) ===== */
+  .list-item{background:var(--bg-panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;}
+  .li-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+  .li-title{font-weight:600;font-size:13.5px;}
+  .li-sub{font-size:11.5px;color:var(--text-dim);margin-top:2px;}
+  .badge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:0.4px;}
+  .badge.success{background:rgba(61,214,140,0.15);color:var(--green);}
+  .badge.pending, .badge.processing{background:rgba(255,176,32,0.15);color:var(--amber);}
+  .badge.failed, .badge.rejected{background:rgba(255,107,107,0.15);color:var(--red);}
+  .badge.approved{background:rgba(61,214,140,0.15);color:var(--green);}
+  .li-price{font-family:'IBM Plex Mono';font-weight:600;font-size:13px;}
+  .li-actions{margin-top:8px;display:flex;gap:8px;}
+  .link-btn{background:none;border:none;color:var(--blue);font-size:12px;font-weight:600;cursor:pointer;padding:0;}
+
+  .empty{text-align:center;color:var(--text-dim);font-size:13px;padding:40px 20px;}
+
+  /* ===== Bottom nav ===== */
+  .bottomnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(18,24,40,0.92);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;z-index:30;}
+  .navbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:11px 0 9px;background:none;border:none;color:var(--text-dim);font-size:10.5px;font-weight:600;cursor:pointer;}
+  .navbtn .ic{font-size:19px;}
+  .navbtn.active{color:var(--amber);}
+
+  /* ===== Modal / sheet ===== */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:50;display:none;align-items:flex-end;justify-content:center;}
+  .overlay.show{display:flex;}
+  .sheet{background:var(--bg-panel-2);width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:20px;max-height:85vh;overflow-y:auto;animation:up .2s ease-out;}
+  @keyframes up{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .sheet-title{font-size:16px;font-weight:700;margin-bottom:4px;}
+  .sheet-sub{font-size:12.5px;color:var(--text-dim);margin-bottom:16px;}
+  .field-label{font-size:12px;color:var(--text-dim);margin:14px 0 6px;font-weight:600;}
+  .field-input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:12px 14px;border-radius:12px;font-size:14px;}
+  .btn-primary{width:100%;background:var(--amber);color:#1a1200;border:none;padding:14px;border-radius:12px;font-weight:700;font-size:14px;margin-top:18px;cursor:pointer;}
+  .btn-primary:disabled{opacity:0.5;}
+  .btn-ghost{width:100%;background:transparent;border:1px solid var(--line);color:var(--text);padding:13px;border-radius:12px;font-weight:600;font-size:14px;margin-top:10px;cursor:pointer;}
+  .close-x{position:absolute;top:16px;right:16px;background:var(--bg-panel);width:30px;height:30px;border-radius:50%;border:none;color:var(--text-dim);font-size:14px;cursor:pointer;}
+  .receipt{background:var(--bg);border:1px dashed var(--line);border-radius:14px;padding:16px;margin-top:14px;}
+  .receipt-row{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;color:var(--text-dim);}
+  .receipt-row b{color:var(--text);font-weight:600;}
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--bg-panel-2);border:1px solid var(--line);padding:12px 18px;border-radius:12px;font-size:13px;z-index:60;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4);}
+
+  /* ===== Auth screen ===== */
+  #authScreen{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:32px 24px;max-width:420px;margin:0 auto;}
+  .auth-logo{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--amber),#FF8A00);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#1a1200;margin-bottom:20px;font-family:'Space Grotesk';}
+  #authScreen h1{font-size:24px;margin:0 0 4px;}
+  #authScreen p{color:var(--text-dim);font-size:13px;margin:0 0 28px;}
+  .auth-tabs{display:flex;background:var(--bg-panel);border-radius:12px;padding:4px;margin-bottom:20px;}
+  .auth-tab{flex:1;text-align:center;padding:9px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-dim);}
+  .auth-tab.active{background:var(--amber);color:#1a1200;}
+  .err-msg{color:var(--red);font-size:12.5px;margin-top:10px;min-height:16px;}
+  .hidden{display:none !important;}
+  .loader{border:2px solid rgba(255,255,255,0.1);border-top:2px solid var(--amber);border-radius:50%;width:16px;height:16px;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .center-loading{display:flex;align-items:center;justify-content:center;padding:60px 0;}
+</style>
+</head>
+<body>
+
+<!-- ============= CONFIG: GANTI SEBELUM DEPLOY ============= -->
+<script>
+  const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+  const EDGE_FUNCTION_URL = SUPABASE_URL + "/functions/v1/digiflazz-proxy";
+</script>
+<!-- ========================================================= -->
+
+<div id="authScreen">
+  <div class="auth-logo">X</div>
+  <h1>XREZZKY TOP UP</h1>
+  <p>Top up game, pulsa & voucher — cepat, aman, 24 jam.</p>
+  <div class="auth-tabs">
+    <div class="auth-tab active" data-tab="login" onclick="switchAuthTab('login')">Masuk</div>
+    <div class="auth-tab" data-tab="register" onclick="switchAuthTab('register')">Daftar</div>
+  </div>
+  <input class="field-input" id="authEmail" placeholder="Email" type="email" style="margin-bottom:10px;">
+  <input class="field-input" id="authPassword" placeholder="Password" type="password">
+  <input class="field-input hidden" id="authNama" placeholder="Nama lengkap" style="margin-top:10px;">
+  <div class="err-msg" id="authErr"></div>
+  <button class="btn-primary" id="authSubmitBtn" onclick="submitAuth()">Masuk</button>
+</div>
+
+<div id="app" class="hidden">
+
+  <div class="topbar">
+    <div class="brand-row">
+      <div class="brand"><span class="dot"></span><span class="brand-name">XREZZKY TOP UP</span></div>
+      <button class="icon-btn" onclick="logout()">⏻</button>
+    </div>
+    <div class="meter">
+      <div>
+        <div class="meter-label">Saldo Kamu</div>
+        <div class="meter-value" id="saldoDisplay">Rp 0</div>
+      </div>
+      <button class="btn-topup" onclick="openSheet('sheetDeposit')">+ Top Up</button>
+    </div>
+  </div>
+
+  <!-- TAB: KATALOG -->
+  <div id="tabKatalog">
+    <div class="search-wrap">
+      <input class="search-input" id="searchInput" placeholder="Cari produk (misal: Mobile Legends)" oninput="renderProducts()">
+    </div>
+    <div class="chips" id="categoryChips"></div>
+    <div class="content">
+      <div id="productGrid" class="product-grid"></div>
+      <div id="productEmpty" class="empty hidden">Produk tidak ditemukan.</div>
+    </div>
+  </div>
+
+  <!-- TAB: RIWAYAT -->
+  <div id="tabRiwayat" class="content hidden">
+    <div class="section-title">Riwayat Transaksi</div>
+    <div id="orderList"></div>
+  </div>
+
+  <!-- TAB: DEPOSIT -->
+  <div id="tabDeposit" class="content hidden">
+    <div class="section-title">Riwayat Top Up Saldo</div>
+    <div id="depositList"></div>
+  </div>
+
+  <!-- TAB: PROFIL -->
+  <div id="tabProfil" class="content hidden">
+    <div class="section-title">Profil</div>
+    <div class="list-item">
+      <div class="field-label" style="margin-top:0;">Nama</div>
+      <input class="field-input" id="profNama">
+      <div class="field-label">No. HP</div>
+      <input class="field-input" id="profHp">
+      <button class="btn-primary" onclick="saveProfile()">Simpan</button>
+    </div>
+    <button class="btn-ghost" onclick="logout()">Keluar Akun</button>
+  </div>
+
+  <div class="bottomnav">
+    <button class="navbtn active" data-tab="Katalog" onclick="switchTab('Katalog')"><span class="ic">🛒</span>Katalog</button>
+    <button class="navbtn" data-tab="Riwayat" onclick="switchTab('Riwayat')"><span class="ic">🧾</span>Riwayat</button>
+    <button class="navbtn" data-tab="Deposit" onclick="switchTab('Deposit')"><span class="ic">💳</span>Saldo</button>
+    <button class="navbtn" data-tab="Profil" onclick="switchTab('Profil')"><span class="ic">👤</span>Profil</button>
+  </div>
+</div>
+
+<!-- SHEET: ORDER -->
+<div class="overlay" id="sheetOrder">
+  <div class="sheet" style="position:relative;">
+    <button class="close-x" onclick="closeSheet('sheetOrder')">✕</button>
+    <div class="sheet-title" id="orderProductName">Nama Produk</div>
+    <div class="sheet-sub" id="orderProductPrice">Rp 0</div>
+    <div class="field-label">Nomor Tujuan / ID Game</div>
+    <input class="field-input" id="orderCustomerNo" placeholder="Contoh: 081234567890">
+    <div class="err-msg" id="orderErr"></div>
+    <button class="btn-primary" id="orderSubmitBtn" onclick="submitOrder()">Bayar dengan Saldo</button>
+    <div id="orderReceipt"></div>
+  </div>
+</div>
+
+<!-- SHEET: DEPOSIT -->
+<div class="overlay" id="sheetDeposit">
+  <div class="sheet" style="position:relative;">
+    <button class="close-x" onclick="closeSheet('sheetDeposit')">✕</button>
+    <div class="sheet-title">Top Up Saldo</div>
+    <div class="sheet-sub">Transfer manual, saldo masuk setelah dikonfirmasi admin.</div>
+    <div class="field-label" style="margin-top:0;">Jumlah (Rp)</div>
+    <input class="field-input" id="depAmount" type="number" placeholder="50000">
+    <div class="field-label">Upload Bukti Transfer</div>
+    <input class="field-input" id="depFile" type="file" accept="image/*">
+    <div class="err-msg" id="depErr"></div>
+    <button class="btn-primary" id="depSubmitBtn" onclick="submitDeposit()">Kirim Konfirmasi</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null, profile = null, products = [], orders = [], deposits = [], activeCategory = "Semua";
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(()=> t.style.display='none', 2500);
+}
+function fmtRp(n){ return "Rp " + Number(n||0).toLocaleString('id-ID'); }
+
+// ---------- AUTH ----------
+function switchAuthTab(tab){
+  document.querySelectorAll('.auth-tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===tab));
+  document.getElementById('authNama').classList.toggle('hidden', tab!=='register');
+  document.getElementById('authSubmitBtn').textContent = tab==='login' ? 'Masuk' : 'Daftar';
+  document.getElementById('authSubmitBtn').dataset.mode = tab;
+  document.getElementById('authErr').textContent = '';
+}
+document.getElementById('authSubmitBtn').dataset.mode = 'login';
+
+async function submitAuth(){
+  const mode = document.getElementById('authSubmitBtn').dataset.mode;
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('authErr');
+  errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'Email & password wajib diisi'; return; }
+
+  if(mode === 'register'){
+    const nama = document.getElementById('authNama').value.trim();
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if(error){ errEl.textContent = error.message; return; }
+    if(data.user && nama){
+      await sb.from('profiles').update({ nama }).eq('id', data.user.id);
+    }
+    toast('Pendaftaran berhasil! Cek email untuk verifikasi (jika diaktifkan).');
+    if(data.session) await afterLogin();
+  } else {
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){ errEl.textContent = error.message; return; }
+    await afterLogin();
+  }
+}
+
+async function logout(){
+  await sb.auth.signOut();
+  location.reload();
+}
+
+async function afterLogin(){
+  const { data: { user } } = await sb.auth.getUser();
+  currentUser = user;
+  const { data: p } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  profile = p;
+  if(profile?.is_banned){
+    toast('Akun kamu diblokir. Hubungi admin.');
+    await sb.auth.signOut();
+    return;
+  }
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('saldoDisplay').textContent = fmtRp(profile.saldo);
+  document.getElementById('profNama').value = profile.nama || '';
+  document.getElementById('profHp').value = profile.no_hp || '';
+  await loadProducts();
+  await loadOrders();
+  await loadDeposits();
+}
+
+// ---------- NAV ----------
+function switchTab(tab){
+  ['Katalog','Riwayat','Deposit','Profil'].forEach(t=>{
+    document.getElementById('tab'+t).classList.toggle('hidden', t!==tab);
+  });
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+}
+function openSheet(id){ document.getElementById(id).classList.add('show'); }
+function closeSheet(id){ document.getElementById(id).classList.remove('show'); }
+
+// ---------- PRODUCTS ----------
+async function loadProducts(){
+  const { data } = await sb.from('products').select('*').eq('is_active', true).eq('buyer_product_status', true).order('category');
+  products = data || [];
+  const cats = ["Semua", ...new Set(products.map(p=>p.category).filter(Boolean))];
+  document.getElementById('categoryChips').innerHTML = cats.map(c =>
+    `<div class="chip ${c===activeCategory?'active':''}" onclick="setCategory('${c.replace(/'/g,"\\'")}')">${c}</div>`
+  ).join('');
+  renderProducts();
+}
+function setCategory(c){ activeCategory = c; loadProducts(); }
+function renderProducts(){
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let list = products.filter(p => activeCategory==='Semua' || p.category===activeCategory);
+  if(q) list = list.filter(p => p.product_name.toLowerCase().includes(q) || (p.brand||'').toLowerCase().includes(q));
+  const grid = document.getElementById('productGrid');
+  document.getElementById('productEmpty').classList.toggle('hidden', list.length>0);
+  grid.innerHTML = list.map(p => `
+    <div class="product-card" onclick='openOrder(${JSON.stringify(p).replace(/'/g,"&apos;")})'>
+      <div class="product-brand">${p.brand || p.category || ''}</div>
+      <div class="product-name">${p.product_name}</div>
+      <div class="product-price">${fmtRp(p.final_price)}</div>
+    </div>
+  `).join('');
+}
+
+// ---------- ORDER ----------
+let selectedProduct = null;
+function openOrder(p){
+  selectedProduct = p;
+  document.getElementById('orderProductName').textContent = p.product_name;
+  document.getElementById('orderProductPrice').textContent = fmtRp(p.final_price);
+  document.getElementById('orderCustomerNo').value = '';
+  document.getElementById('orderErr').textContent = '';
+  document.getElementById('orderReceipt').innerHTML = '';
+  document.getElementById('orderSubmitBtn').classList.remove('hidden');
+  openSheet('sheetOrder');
+}
+async function submitOrder(){
+  const customerNo = document.getElementById('orderCustomerNo').value.trim();
+  const errEl = document.getElementById('orderErr');
+  if(!customerNo){ errEl.textContent = 'Nomor tujuan wajib diisi'; return; }
+  if(profile.saldo < selectedProduct.final_price){ errEl.textContent = 'Saldo tidak cukup, silakan top up dulu'; return; }
+  errEl.textContent = '';
+  const btn = document.getElementById('orderSubmitBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Memproses...';
+
+  const { data: { session } } = await sb.auth.getSession();
+  try{
+    const res = await fetch(EDGE_FUNCTION_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization': 'Bearer '+session.access_token },
+      body: JSON.stringify({ action:'create-order', payload:{ buyer_sku_code: selectedProduct.buyer_sku_code, customer_no: customerNo } })
+    });
+    const result = await res.json();
+    if(result.error){ errEl.textContent = result.error; btn.disabled=false; btn.textContent='Bayar dengan Saldo'; return; }
+
+    btn.classList.add('hidden');
+    document.getElementById('orderReceipt').innerHTML = `
+      <div class="receipt">
+        <div class="receipt-row"><span>Status</span><b>${result.status.toUpperCase()}</b></div>
+        <div class="receipt-row"><span>Ref ID</span><b>${result.ref_id}</b></div>
+        <div class="receipt-row"><span>SN/Info</span><b>${result.sn || '-'}</b></div>
+        <div class="receipt-row"><span>Pesan</span><b>${result.message || '-'}</b></div>
+      </div>
+      <button class="btn-ghost" onclick="closeSheet('sheetOrder'); location.reload();">Selesai</button>
+    `;
+    await afterLogin();
+  }catch(e){
+    errEl.textContent = 'Gagal menghubungi server, coba lagi.';
+    btn.disabled=false; btn.textContent='Bayar dengan Saldo';
+  }
+}
+
+// ---------- RIWAYAT ORDER ----------
+async function loadOrders(){
+  const { data } = await sb.from('orders').select('*').eq('user_id', currentUser.id).order('created_at', { ascending:false });
+  orders = data || [];
+  renderOrders();
+}
+function renderOrders(){
+  const el = document.getElementById('orderList');
+  if(!orders.length){ el.innerHTML = '<div class="empty">Belum ada transaksi.</div>'; return; }
+  el.innerHTML = orders.map(o => `
+    <div class="list-item">
+      <div class="li-top">
+        <div><div class="li-title">${o.product_name}</div><div class="li-sub">${o.customer_no} · ${new Date(o.created_at).toLocaleString('id-ID')}</div></div>
+        <span class="badge ${o.status}">${o.status}</span>
+      </div>
+      <div class="li-price">${fmtRp(o.price)}</div>
+      ${o.status==='processing' ? `<div class="li-actions"><button class="link-btn" onclick="checkStatus('${o.ref_id}')">Cek Status</button></div>` : ''}
+      ${o.sn ? `<div class="li-sub" style="margin-top:6px;">SN: ${o.sn}</div>` : ''}
+    </div>
+  `).join('');
+}
+async function checkStatus(ref_id){
+  const { data: { session } } = await sb.auth.getSession();
+  const res = await fetch(EDGE_FUNCTION_URL, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'Authorization': 'Bearer '+session.access_token },
+    body: JSON.stringify({ action:'check-status', payload:{ ref_id } })
+  });
+  const result = await res.json();
+  toast(result.status ? ('Status: '+result.status) : (result.error || 'Gagal cek status'));
+  await loadOrders();
+}
+
+// ---------- DEPOSIT ----------
+async function loadDeposits(){
+  const { data } = await sb.from('deposits').select('*').eq('user_id', currentUser.id).order('created_at', { ascending:false });
+  deposits = data || [];
+  const el = document.getElementById('depositList');
+  if(!deposits.length){ el.innerHTML = '<div class="empty">Belum ada riwayat top up.</div>'; return; }
+  el.innerHTML = deposits.map(d => `
+    <div class="list-item">
+      <div class="li-top">
+        <div><div class="li-title">${fmtRp(d.jumlah)}</div><div class="li-sub">${new Date(d.created_at).toLocaleString('id-ID')}</div></div>
+        <span class="badge ${d.status}">${d.status}</span>
+      </div>
+      ${d.catatan_admin ? `<div class="li-sub">Catatan: ${d.catatan_admin}</div>` : ''}
+    </div>
+  `).join('');
+}
+async function submitDeposit(){
+  const amount = Number(document.getElementById('depAmount').value);
+  const file = document.getElementById('depFile').files[0];
+  const errEl = document.getElementById('depErr');
+  if(!amount || amount < 1000){ errEl.textContent = 'Masukkan jumlah yang valid'; return; }
+  if(!file){ errEl.textContent = 'Upload bukti transfer dulu'; return; }
+  errEl.textContent = '';
+  const btn = document.getElementById('depSubmitBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="loader"></span> Mengunggah...';
+
+  const path = `${currentUser.id}/${Date.now()}_${file.name}`;
+  const { error: upErr } = await sb.storage.from('bukti-deposit').upload(path, file);
+  if(upErr){ errEl.textContent = 'Gagal upload: '+upErr.message; btn.disabled=false; btn.textContent='Kirim Konfirmasi'; return; }
+  const { data: urlData } = sb.storage.from('bukti-deposit').getPublicUrl(path);
+
+  const { error } = await sb.from('deposits').insert({
+    user_id: currentUser.id, jumlah: amount, bukti_url: urlData.publicUrl
+  });
+  btn.disabled = false; btn.textContent = 'Kirim Konfirmasi';
+  if(error){ errEl.textContent = error.message; return; }
+  toast('Konfirmasi terkirim, tunggu approve admin.');
+  closeSheet('sheetDeposit');
+  document.getElementById('depAmount').value = '';
+  document.getElementById('depFile').value = '';
+  await loadDeposits();
+}
+
+// ---------- PROFILE ----------
+async function saveProfile(){
+  const nama = document.getElementById('profNama').value.trim();
+  const no_hp = document.getElementById('profHp').value.trim();
+  const { error } = await sb.from('profiles').update({ nama, no_hp }).eq('id', currentUser.id);
+  toast(error ? 'Gagal menyimpan' : 'Profil disimpan');
+}
+
+// ---------- INIT ----------
+(async function init(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) await afterLogin();
+})();
+</script>
+</body>
+</html>
