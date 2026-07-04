@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XREZZKY TOP UP — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{ --bg:#0B0F1A; --panel:#121828; --panel2:#1A2236; --line:rgba(255,255,255,0.08);
+    --amber:#FFB020; --text:#EDEFF5; --dim:#8B92A8; --green:#3DD68C; --red:#FF6B6B; --blue:#5B8CFF; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  #app{max-width:520px;margin:0 auto;padding-bottom:70px;}
+  .topbar{position:sticky;top:0;background:var(--bg);z-index:10;padding:16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+  .brand{font-family:'Space Grotesk';font-weight:700;font-size:15px;}
+  .brand span{color:var(--amber);}
+  .icon-btn{background:var(--panel);border:1px solid var(--line);color:var(--text);width:34px;height:34px;border-radius:10px;cursor:pointer;}
+  .content{padding:16px;}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+  .stat-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;}
+  .stat-label{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:0.5px;}
+  .stat-value{font-family:'IBM Plex Mono';font-size:19px;font-weight:600;margin-top:4px;}
+  .section-title{font-size:13px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px;display:flex;justify-content:space-between;align-items:center;}
+  .btn-sm{background:var(--amber);color:#1a1200;border:none;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;}
+  .btn-sm.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line);}
+  .btn-sm.danger{background:rgba(255,107,107,0.15);color:var(--red);}
+  .btn-sm.success{background:rgba(61,214,140,0.15);color:var(--green);}
+  .list-item{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:9px;}
+  .li-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;}
+  .li-title{font-weight:600;font-size:13px;}
+  .li-sub{font-size:11px;color:var(--dim);margin-top:2px;}
+  .badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;text-transform:uppercase;white-space:nowrap;}
+  .badge.success,.badge.approved{background:rgba(61,214,140,0.15);color:var(--green);}
+  .badge.pending,.badge.processing{background:rgba(255,176,32,0.15);color:var(--amber);}
+  .badge.failed,.badge.rejected{background:rgba(255,107,107,0.15);color:var(--red);}
+  .row{display:flex;gap:8px;margin-top:8px;}
+  .field-input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:9px 11px;border-radius:9px;font-size:13px;}
+  .tabs{display:flex;overflow-x:auto;gap:6px;padding:0 16px 12px;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tabbtn{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--dim);padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .tabbtn.active{background:var(--amber);color:#1a1200;border-color:var(--amber);}
+  .hidden{display:none !important;}
+  .empty{text-align:center;color:var(--dim);font-size:13px;padding:30px 0;}
+  .img-link{color:var(--blue);font-size:12px;text-decoration:none;}
+  #authScreen{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:32px 24px;max-width:400px;margin:0 auto;}
+  .err-msg{color:var(--red);font-size:12.5px;margin-top:8px;min-height:16px;}
+  .btn-primary{width:100%;background:var(--amber);color:#1a1200;border:none;padding:13px;border-radius:12px;font-weight:700;font-size:14px;margin-top:14px;cursor:pointer;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:11px 18px;border-radius:12px;font-size:13px;z-index:60;display:none;}
+  input.margin-input{width:70px;}
+</style>
+</head>
+<body>
+
+<script>
+  const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+  const EDGE_FUNCTION_URL = SUPABASE_URL + "/functions/v1/digiflazz-proxy";
+</script>
+
+<div id="authScreen">
+  <h1 style="margin-bottom:2px;">Admin <span style="color:var(--amber)">Console</span></h1>
+  <p style="color:var(--dim);font-size:13px;margin:0 0 20px;">Khusus akun dengan role admin.</p>
+  <input class="field-input" id="aEmail" placeholder="Email" type="email" style="margin-bottom:10px;">
+  <input class="field-input" id="aPass" placeholder="Password" type="password">
+  <div class="err-msg" id="aErr"></div>
+  <button class="btn-primary" onclick="adminLogin()">Masuk</button>
+</div>
+
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="brand">XREZZKY <span>ADMIN</span></div>
+    <button class="icon-btn" onclick="logout()">⏻</button>
+  </div>
+  <div class="tabs">
+    <div class="tabbtn active" data-t="Dashboard" onclick="switchTab('Dashboard')">Dashboard</div>
+    <div class="tabbtn" data-t="Produk" onclick="switchTab('Produk')">Produk</div>
+    <div class="tabbtn" data-t="Deposit" onclick="switchTab('Deposit')">Deposit</div>
+    <div class="tabbtn" data-t="Order" onclick="switchTab('Order')">Order</div>
+    <div class="tabbtn" data-t="User" onclick="switchTab('User')">User</div>
+  </div>
+
+  <div class="content">
+    <div id="tabDashboard">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Total User</div><div class="stat-value" id="statUsers">0</div></div>
+        <div class="stat-card"><div class="stat-label">Order Sukses</div><div class="stat-value" id="statOrders">0</div></div>
+        <div class="stat-card"><div class="stat-label">Deposit Pending</div><div class="stat-value" id="statDepositPending">0</div></div>
+        <div class="stat-card"><div class="stat-label">Omzet (Sukses)</div><div class="stat-value mono" id="statRevenue">Rp 0</div></div>
+      </div>
+    </div>
+
+    <div id="tabProduk" class="hidden">
+      <div class="section-title"><span>Produk (<span id="produkCount">0</span>)</span>
+        <button class="btn-sm" id="syncBtn" onclick="syncProducts()">Sync dari Digiflazz</button>
+      </div>
+      <input class="field-input" id="produkSearch" placeholder="Cari produk..." oninput="renderProducts()" style="margin-bottom:10px;">
+      <div id="productAdminList"></div>
+    </div>
+
+    <div id="tabDeposit" class="hidden">
+      <div class="section-title">Konfirmasi Deposit</div>
+      <div id="depositAdminList"></div>
+    </div>
+
+    <div id="tabOrder" class="hidden">
+      <div class="section-title">Semua Order</div>
+      <div id="orderAdminList"></div>
+    </div>
+
+    <div id="tabUser" class="hidden">
+      <div class="section-title">Kelola User</div>
+      <div id="userAdminList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let session = null;
+let allProducts = [], allDeposits = [], allOrders = [], allUsers = [];
+
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
+function fmtRp(n){ return "Rp " + Number(n||0).toLocaleString('id-ID'); }
+
+async function adminLogin(){
+  const email = document.getElementById('aEmail').value.trim();
+  const password = document.getElementById('aPass').value;
+  const errEl = document.getElementById('aErr');
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ errEl.textContent = error.message; return; }
+  const { data: profile } = await sb.from('profiles').select('role').eq('id', data.user.id).single();
+  if(profile?.role !== 'admin'){
+    errEl.textContent = 'Akun ini bukan admin.';
+    await sb.auth.signOut();
+    return;
+  }
+  session = data.session;
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  await loadAll();
+}
+async function logout(){ await sb.auth.signOut(); location.reload(); }
+
+function switchTab(t){
+  ['Dashboard','Produk','Deposit','Order','User'].forEach(x=> document.getElementById('tab'+x).classList.toggle('hidden', x!==t));
+  document.querySelectorAll('.tabbtn').forEach(b=> b.classList.toggle('active', b.dataset.t===t));
+}
+
+async function loadAll(){
+  await Promise.all([loadProducts(), loadDeposits(), loadOrders(), loadUsers()]);
+  renderDashboard();
+}
+
+function renderDashboard(){
+  document.getElementById('statUsers').textContent = allUsers.length;
+  const successOrders = allOrders.filter(o=>o.status==='success');
+  document.getElementById('statOrders').textContent = successOrders.length;
+  document.getElementById('statDepositPending').textContent = allDeposits.filter(d=>d.status==='pending').length;
+  const revenue = successOrders.reduce((s,o)=> s + (o.price - o.cost_price), 0);
+  document.getElementById('statRevenue').textContent = fmtRp(revenue) + ' profit';
+}
+
+// ---------- PRODUCTS ----------
+async function loadProducts(){
+  const { data } = await sb.from('products').select('*').order('category');
+  allProducts = data || [];
+  document.getElementById('produkCount').textContent = allProducts.length;
+  renderProducts();
+}
+async function syncProducts(){
+  const btn = document.getElementById('syncBtn');
+  btn.disabled = true; btn.textContent = 'Menyinkron...';
+  const { data: { session: s } } = await sb.auth.getSession();
+  try{
+    const res = await fetch(EDGE_FUNCTION_URL, {
+      method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+s.access_token },
+      body: JSON.stringify({ action:'sync-products' })
+    });
+    const result = await res.json();
+    toast(result.error ? result.error : `Sinkron sukses: ${result.synced} produk`);
+    await loadProducts();
+  }catch(e){ toast('Gagal sinkron, cek koneksi Edge Function'); }
+  btn.disabled = false; btn.textContent = 'Sync dari Digiflazz';
+}
+function renderProducts(){
+  const q = document.getElementById('produkSearch').value.toLowerCase();
+  const list = allProducts.filter(p => !q || p.product_name.toLowerCase().includes(q));
+  const el = document.getElementById('productAdminList');
+  if(!list.length){ el.innerHTML = '<div class="empty">Belum ada produk. Klik Sync dari Digiflazz.</div>'; return; }
+  el.innerHTML = list.map(p => `
+    <div class="list-item">
+      <div class="li-top">
+        <div><div class="li-title">${p.product_name}</div><div class="li-sub">${p.category || '-'} · Modal ${fmtRp(p.base_price)}</div></div>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--dim);">
+          <input type="checkbox" ${p.is_active?'checked':''} onchange="toggleActive('${p.id}', this.checked)"> Aktif
+        </label>
+      </div>
+      <div class="row">
+        <select class="field-input" style="flex:0 0 90px;" id="mtype-${p.id}">
+          <option value="percent" ${p.margin_type==='percent'?'selected':''}>%</option>
+          <option value="fixed" ${p.margin_type==='fixed'?'selected':''}>Rp</option>
+        </select>
+        <input class="field-input margin-input" type="number" id="mval-${p.id}" value="${p.margin_value}">
+        <button class="btn-sm ghost" onclick="updateMargin('${p.id}')">Set Harga</button>
+      </div>
+      <div class="li-sub" style="margin-top:6px;">Harga jual sekarang: <b class="mono">${fmtRp(p.final_price)}</b></div>
+    </div>
+  `).join('');
+}
+async function toggleActive(id, val){
+  await sb.from('products').update({ is_active: val }).eq('id', id);
+  toast('Status produk diperbarui');
+  await loadProducts();
+}
+async function updateMargin(id){
+  const type = document.getElementById('mtype-'+id).value;
+  const val = Number(document.getElementById('mval-'+id).value);
+  const p = allProducts.find(x=>x.id===id);
+  const finalPrice = type==='percent' ? Math.ceil(p.base_price * (1+val/100)) : p.base_price + val;
+  await sb.from('products').update({ margin_type:type, margin_value:val, final_price:finalPrice }).eq('id', id);
+  toast('Harga jual diperbarui');
+  await loadProducts();
+}
+
+// ---------- DEPOSITS ----------
+async function loadDeposits(){
+  const { data } = await sb.from('deposits').select('*, profiles(nama, email)').order('created_at', { ascending:false });
+  allDeposits = data || [];
+  renderDeposits();
+}
+function renderDeposits(){
+  const el = document.getElementById('depositAdminList');
+  if(!allDeposits.length){ el.innerHTML = '<div class="empty">Belum ada deposit.</div>'; return; }
+  el.innerHTML = allDeposits.map(d => `
+    <div class="list-item">
+      <div class="li-top">
+        <div><div class="li-title">${fmtRp(d.jumlah)}</div><div class="li-sub">${d.profiles?.nama || d.profiles?.email || 'User'} · ${new Date(d.created_at).toLocaleString('id-ID')}</div></div>
+        <span class="badge ${d.status}">${d.status}</span>
+      </div>
+      <a class="img-link" href="${d.bukti_url}" target="_blank">Lihat bukti transfer →</a>
+      ${d.status==='pending' ? `
+        <div class="row">
+          <button class="btn-sm success" onclick="approveDeposit('${d.id}', true)">ACC</button>
+          <button class="btn-sm danger" onclick="approveDeposit('${d.id}', false)">Tolak</button>
+        </div>` : `<div class="li-sub" style="margin-top:6px;">${d.catatan_admin || ''}</div>`}
+    </div>
+  `).join('');
+}
+async function approveDeposit(id, approve){
+  const catatan = approve ? null : prompt('Alasan penolakan (opsional):') || 'Ditolak admin';
+  const { error } = await sb.rpc('approve_deposit', { p_deposit_id: id, p_approve: approve, p_catatan: catatan });
+  toast(error ? error.message : (approve ? 'Deposit di-ACC, saldo user bertambah' : 'Deposit ditolak'));
+  await loadDeposits();
+}
+
+// ---------- ORDERS ----------
+async function loadOrders(){
+  const { data } = await sb.from('orders').select('*, profiles(nama, email)').order('created_at', { ascending:false }).limit(100);
+  allOrders = data || [];
+  renderOrders();
+}
+function renderOrders(){
+  const el = document.getElementById('orderAdminList');
+  if(!allOrders.length){ el.innerHTML = '<div class="empty">Belum ada order.</div>'; return; }
+  el.innerHTML = allOrders.map(o => `
+    <div class="list-item">
+      <div class="li-top">
+        <div><div class="li-title">${o.product_name}</div><div class="li-sub">${o.profiles?.nama || o.profiles?.email} · ${o.customer_no}</div></div>
+        <span class="badge ${o.status}">${o.status}</span>
+      </div>
+      <div class="li-sub">Ref: ${o.ref_id} · Jual ${fmtRp(o.price)} / Modal ${fmtRp(o.cost_price)}</div>
+      ${o.sn ? `<div class="li-sub">SN: ${o.sn}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ---------- USERS ----------
+async function loadUsers(){
+  const { data } = await sb.from('profiles').select('*').order('created_at', { ascending:false });
+  allUsers = data || [];
+  renderUsers();
+}
+function renderUsers(){
+  const el = document.getElementById('userAdminList');
+  el.innerHTML = allUsers.map(u => `
+    <div class="list-item">
+      <div class="li-top">
+        <div><div class="li-title">${u.nama || '-'}</div><div class="li-sub">${u.email} · ${u.role}</div></div>
+        <span class="badge ${u.is_banned?'failed':'success'}">${u.is_banned?'banned':'aktif'}</span>
+      </div>
+      <div class="li-sub">Saldo: <b class="mono">${fmtRp(u.saldo)}</b></div>
+      <div class="row">
+        <input class="field-input" type="number" placeholder="Tambah/kurangi saldo (mis. 50000 atau -20000)" id="adj-${u.id}">
+        <button class="btn-sm ghost" onclick="adjustSaldo('${u.id}')">Terapkan</button>
+      </div>
+      <div class="row">
+        <button class="btn-sm ${u.is_banned?'success':'danger'}" onclick="toggleBan('${u.id}', ${!u.is_banned})">${u.is_banned?'Buka Blokir':'Blokir User'}</button>
+      </div>
+    </div>
+  `).join('');
+}
+async function adjustSaldo(id){
+  const val = Number(document.getElementById('adj-'+id).value);
+  if(!val){ toast('Masukkan angka dulu'); return; }
+  const u = allUsers.find(x=>x.id===id);
+  await sb.from('profiles').update({ saldo: u.saldo + val }).eq('id', id);
+  toast('Saldo diperbarui');
+  await loadUsers();
+}
+async function toggleBan(id, val){
+  await sb.from('profiles').update({ is_banned: val }).eq('id', id);
+  toast(val ? 'User diblokir' : 'User dibuka blokirnya');
+  await loadUsers();
+}
+
+// ---------- INIT ----------
+(async function init(){
+  const { data: { session: s } } = await sb.auth.getSession();
+  if(s){
+    const { data: profile } = await sb.from('profiles').select('role').eq('id', s.user.id).single();
+    if(profile?.role === 'admin'){
+      session = s;
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      await loadAll();
+    }
+  }
+})();
+</script>
+</body>
+</html>
