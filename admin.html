@@ -133,7 +133,13 @@ async function adminLogin(){
   const errEl = document.getElementById('aErr');
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if(error){ errEl.textContent = error.message; return; }
-  const { data: profile } = await sb.from('profiles').select('role').eq('id', data.user.id).single();
+  const { data: profile, error: profileErr } = await sb.from('profiles').select('role').eq('id', data.user.id).single();
+  if(profileErr){
+    // Jangan nyamarin error jadi "bukan admin" — tampilin apa adanya biar gampang di-debug
+    errEl.textContent = 'Gagal ambil data profil: ' + profileErr.message;
+    await sb.auth.signOut();
+    return;
+  }
   if(profile?.role !== 'admin'){
     errEl.textContent = 'Akun ini bukan admin.';
     await sb.auth.signOut();
