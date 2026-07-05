@@ -131,17 +131,26 @@ async function adminLogin(){
   const email = document.getElementById('aEmail').value.trim();
   const password = document.getElementById('aPass').value;
   const errEl = document.getElementById('aErr');
+
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if(error){ errEl.textContent = error.message; return; }
+  console.log("USER ID:", data.user.id);
+
   const { data: profile, error: profileErr } = await sb.from('profiles').select('role').eq('id', data.user.id).single();
+  console.log("PROFILE:", profile);
+  console.log("PROFILE ERROR:", profileErr);
+  console.log("ROLE:", profile?.role);
+
   if(profileErr){
     // Jangan nyamarin error jadi "bukan admin" — tampilin apa adanya biar gampang di-debug
     errEl.textContent = 'Gagal ambil data profil: ' + profileErr.message;
     await sb.auth.signOut();
     return;
   }
-  if(profile?.role !== 'admin'){
-    errEl.textContent = 'Akun ini bukan admin.';
+
+  const role = (profile?.role || "").trim().toLowerCase();
+  if(role !== 'admin'){
+    errEl.textContent = `Role terbaca: "${profile?.role}"`;
     await sb.auth.signOut();
     return;
   }
@@ -328,12 +337,19 @@ async function toggleBan(id, val){
 (async function init(){
   const { data: { session: s } } = await sb.auth.getSession();
   if(s){
-    const { data: profile } = await sb.from('profiles').select('role').eq('id', s.user.id).single();
-    if(profile?.role === 'admin'){
+    const { data: profile, error: profileErr } = await sb.from('profiles').select('role').eq('id', s.user.id).single();
+    console.log("INIT USER ID:", s.user.id);
+    console.log("INIT PROFILE:", profile);
+    console.log("INIT PROFILE ERROR:", profileErr);
+    const role = (profile?.role || "").trim().toLowerCase();
+    if(role === 'admin'){
       session = s;
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('app').classList.remove('hidden');
       await loadAll();
+    } else {
+      // sesi lama nyangkut tapi bukan admin (atau gagal fetch) — jangan diem-diem aja, sign out biar gak nyangkut di layar blank
+      await sb.auth.signOut();
     }
   }
 })();
